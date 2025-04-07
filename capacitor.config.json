@@ -1,0 +1,6 @@
+{
+  "appId": "com.example.myapp",
+  "appName": "Life Member App",
+  "webDir": "client/build",
+  "bundledWebRuntime": false
+}
