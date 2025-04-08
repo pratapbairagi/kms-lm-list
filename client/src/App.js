@@ -6,8 +6,8 @@ import 'sweetalert2/dist/sweetalert2.min.css'; // Import SweetAlert2 CSS
 import HtmlTemplate from './component/mailTemplate';
 import ReactDOMServer from 'react-dom/server';
 
-const rootUrl = "http://localhost:5000";
-// const rootUrl = "https://kms-lm-list.vercel.app";
+// const rootUrl = "http://localhost:5000";
+const rootUrl = "https://kms-lm-list.vercel.app";
 const config = {
   headers: {
     "Content-Type": "application/json"
@@ -126,6 +126,9 @@ function App() {
   // Handle file upload and parse the data
   // Inside the handleFileUpload function
   async function handleFileUpload(event) {
+    try {
+      
+    
     const uploadedFile = event.target.files[0];
     setFileName(uploadedFile.name);
 
@@ -164,6 +167,10 @@ function App() {
       setFileOptions(uploadedData.data.fileName)
     };
     reader.readAsBinaryString(uploadedFile);
+
+  } catch (error) {
+      console.log("error while uploading file ", error)
+  }
   }
 
 
