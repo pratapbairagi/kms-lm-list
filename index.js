@@ -26,8 +26,13 @@ app.use(bodyParser.json({ limit: "25mb" }));
 app.use(cookieParser());
 
 // File storage configuration for multer (you can customize this as per your needs)
+// const upload = multer({
+//   dest: 'uploads/', // destination folder for uploaded files
+//   limits: { fileSize: 10 * 1024 * 1024 } // 10MB file size limit
+// });
+
 const upload = multer({
-  dest: 'uploads/', // destination folder for uploaded files
+  storage: multer.memoryStorage(), // Store files in memory
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB file size limit
 });
 
@@ -108,28 +113,109 @@ function convertExcelDate(excelDate) {
 }
 
 // Route to upload file (parse and save as JSON)
-app.post('/api/upload', async (req, res) => {
-  const { data, fileName } = req.body; // Receive array data and custom file name
+// app.post('/api/upload', async (req, res) => {
+//   const { data, fileName } = req.body; // Receive array data and custom file name
 
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return res.status(400).send({ message: 'No data or invalid data format received' });
-  }
+//   if (!data || !Array.isArray(data) || data.length === 0) {
+//     return res.status(400).send({ message: 'No data or invalid data format received' });
+//   }
 
-  if (!fileName || typeof fileName !== 'string' || fileName.trim() === '') {
-    return res.status(400).send({ message: 'Invalid or missing file name' });
-  }
+//   if (!fileName || typeof fileName !== 'string' || fileName.trim() === '') {
+//     return res.status(400).send({ message: 'Invalid or missing file name' });
+//   }
 
-  // Ensure the file name has the .xlsx extension
-  const finalFileName = fileName.endsWith('.xlsx') ? fileName : fileName + '.xlsx';
-  const filePath = path.join(__dirname, 'uploads', finalFileName);
+//   // Ensure the file name has the .xlsx extension
+//   const finalFileName = fileName.endsWith('.xlsx') ? fileName : fileName + '.xlsx';
+//   const filePath = path.join(__dirname, 'uploads', finalFileName);
 
+//   try {
+
+//     let datas = []
+
+//     let headers = data[0];
+
+//     let filteredData = data.filter(v => v.length > 0);
+//     filteredData.map((v, i) => {
+//       let formated = {};
+//       headers.forEach((val, ind) => {
+//         if (val !== null) {
+//           formated[val] = v[ind] || "N/A"
+//         }
+//       })
+//       datas.push(formated)
+//     });
+
+//     datas = datas.map((v) => {
+//       if (typeof Number(v.DOB) === "number") {
+//         // return { ...v, DOB: typeof v.DOB === "number" ? convertExcelDate(v.DOB).format("YYYY-MM-DD") : v.DOB }
+//         return { ...v, DOB: typeof v.DOB === "number" ? convertExcelDate(v.DOB) : v.DOB }
+//       } else {
+//         return { ...v }
+
+//       }
+//     })
+//     // filteredData = filteredData.map(v=> v.filter(vv=> vv !== null) )
+
+//     const uploadsDir = path.join(__dirname, 'uploads');
+
+//     // Check if the 'uploads' directory exists
+//     if (!fs.existsSync(uploadsDir)) {
+//       return res.status(404).json({ message: 'Uploads directory not found' });
+//     }
+
+//     const files = await new Promise((resolve, reject) => {
+//       fs.readdir(uploadsDir, (err, files) => {
+//         if (err) {
+//           reject({ message: 'Error reading the uploads directory' });
+//         } else {
+//           resolve(files);
+//         }
+//       });
+//     });
+
+//     // Convert the array data into a worksheet (Excel format)
+//     const ws = XLSX.utils.json_to_sheet(datas.filter((v, i) => i !== 0));
+
+//     // Create a new workbook and append the worksheet
+//     const wb = XLSX.utils.book_new();
+//     XLSX.utils.book_append_sheet(wb, ws, 'MembersData');
+
+//     // Write the workbook to the file
+//     XLSX.writeFile(wb, filePath);
+
+
+//     // Send the converted array data back to the client (no file path)
+//     res.status(201).json({
+//       message: 'Excel file created successfully',
+//       data: datas, // Returning the original data back to the client
+//       fileName: files, // Send the file name back (just in case)
+//     });
+//   } catch (error) {
+//     console.error('Error generating the Excel file:', error);
+//     return res.status(500).send({ message: error });
+//   }
+// });
+
+// Modified upload endpoint to handle direct file uploads
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
-    let datas = []
+    const fileName = req.file.originalname;
+    const fileBuffer = req.file.buffer;
 
-    let headers = data[0];
+    // Process Excel file
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-    let filteredData = data.filter(v => v.length > 0);
+    // Process data as before
+    let datas = [];
+    let headers = jsonData[0];
+
+    let filteredData = jsonData.filter(v => v.length > 0);
     filteredData.map((v, i) => {
       let formated = {};
       headers.forEach((val, ind) => {
@@ -142,52 +228,29 @@ app.post('/api/upload', async (req, res) => {
 
     datas = datas.map((v) => {
       if (typeof Number(v.DOB) === "number") {
-        // return { ...v, DOB: typeof v.DOB === "number" ? convertExcelDate(v.DOB).format("YYYY-MM-DD") : v.DOB }
         return { ...v, DOB: typeof v.DOB === "number" ? convertExcelDate(v.DOB) : v.DOB }
       } else {
-        return { ...v }
-
+        return v
       }
-    })
-    // filteredData = filteredData.map(v=> v.filter(vv=> vv !== null) )
-
-    const uploadsDir = path.join(__dirname, 'uploads');
-
-    // Check if the 'uploads' directory exists
-    if (!fs.existsSync(uploadsDir)) {
-      return res.status(404).json({ message: 'Uploads directory not found' });
-    }
-
-    const files = await new Promise((resolve, reject) => {
-      fs.readdir(uploadsDir, (err, files) => {
-        if (err) {
-          reject({ message: 'Error reading the uploads directory' });
-        } else {
-          resolve(files);
-        }
-      });
     });
 
-    // Convert the array data into a worksheet (Excel format)
+    // Save to uploads directory if needed (temporary in Vercel)
+    const filePath = path.join(uploadsDir, fileName);
     const ws = XLSX.utils.json_to_sheet(datas.filter((v, i) => i !== 0));
-
-    // Create a new workbook and append the worksheet
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'MembersData');
-
-    // Write the workbook to the file
     XLSX.writeFile(wb, filePath);
 
-
-    // Send the converted array data back to the client (no file path)
     res.status(201).json({
-      message: 'Excel file created successfully',
-      data: datas, // Returning the original data back to the client
-      fileName: files, // Send the file name back (just in case)
+      message: 'Excel file processed successfully',
+      data: datas,
+      fileName: fileName,
+      headers: headers
     });
+
   } catch (error) {
-    console.error('Error generating the Excel file:', error);
-    return res.status(500).send({ message: error });
+    console.error('Error processing file:', error);
+    res.status(500).json({ message: 'Error processing file', error: error.message });
   }
 });
 

@@ -125,52 +125,78 @@ function App() {
 
   // Handle file upload and parse the data
   // Inside the handleFileUpload function
-  async function handleFileUpload(event) {
-    try {
+  // async function handleFileUpload(event) {
+  //   try {
       
-    
+  //   const uploadedFile = event.target.files[0];
+  //   setFileName(uploadedFile.name);
+
+  //   const reader = new FileReader();
+  //   reader.onload = async function (e) {
+  //     const data = e.target.result;
+  //     const wb = XLSX.read(data, { type: 'binary' });
+
+  //     const sheet = wb.Sheets[wb.SheetNames[0]];
+  //     const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  //     setHeaders(jsonData[0]);
+  //     const rows = jsonData.slice(1).map((row) => {
+  //       let obj = {};
+  //       jsonData[0].forEach(async (header, index) => {
+  //         let value = row[index] || '';
+  //         // Check for DOB field and convert it if necessary
+  //         if (header.includes('DOB')) {
+  //           value = value ? await convertExcelDate(value) : '';
+  //         }
+  //         // Handle EMAIL field: if present, leave it as it is; otherwise, set empty
+  //         if (header.includes('EMAIL')) {
+  //           value = value || '';
+  //         }
+  //         obj[header] = value;
+  //       });
+  //       return obj;
+  //     });
+  //     // setData(rows);
+
+  //     // Send the uploaded file to the server
+  //     const formData = new FormData();
+  //     formData.append('file', uploadedFile);
+  //     formData.append('fileName', uploadedFile.name);
+  //     const uploadedData = await axios.post(`${rootUrl}/api/upload`, { data: jsonData, fileName: uploadedFile.name }, config);
+  //     setData(uploadedData.data.data.filter((v, i)=> i !== 0))
+  //     setFileOptions(uploadedData.data.fileName)
+  //   };
+  //   reader.readAsBinaryString(uploadedFile);
+
+  // } catch (error) {
+  //     console.log("error while uploading file ", error)
+  // }
+  // }
+
+  async function handleFileUpload(event) {
     const uploadedFile = event.target.files[0];
+    if (!uploadedFile) return;
+  
     setFileName(uploadedFile.name);
-
-    const reader = new FileReader();
-    reader.onload = async function (e) {
-      const data = e.target.result;
-      const wb = XLSX.read(data, { type: 'binary' });
-
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      setHeaders(jsonData[0]);
-      const rows = jsonData.slice(1).map((row) => {
-        let obj = {};
-        jsonData[0].forEach(async (header, index) => {
-          let value = row[index] || '';
-          // Check for DOB field and convert it if necessary
-          if (header.includes('DOB')) {
-            value = value ? await convertExcelDate(value) : '';
-          }
-          // Handle EMAIL field: if present, leave it as it is; otherwise, set empty
-          if (header.includes('EMAIL')) {
-            value = value || '';
-          }
-          obj[header] = value;
-        });
-        return obj;
-      });
-      // setData(rows);
-
-      // Send the uploaded file to the server
+  
+    try {
       const formData = new FormData();
       formData.append('file', uploadedFile);
-      formData.append('fileName', uploadedFile.name);
-      const uploadedData = await axios.post(`${rootUrl}/api/upload`, { data: jsonData, fileName: uploadedFile.name }, config);
-      setData(uploadedData.data.data.filter((v, i)=> i !== 0))
-      setFileOptions(uploadedData.data.fileName)
-    };
-    reader.readAsBinaryString(uploadedFile);
-
-  } catch (error) {
-      console.log("error while uploading file ", error)
-  }
+  
+      const response = await axios.post(`${rootUrl}/api/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        withCredentials: true
+      });
+  
+      setData(response.data.data.filter((v, i) => i !== 0));
+      setHeaders(response.data.headers);
+      fetchFiles(); // Refresh file list
+      Swal.fire('Success!', 'File uploaded successfully', 'success');
+    } catch (error) {
+      console.error("Upload error:", error);
+      Swal.fire('Error!', 'File upload failed', 'error');
+    }
   }
 
 
