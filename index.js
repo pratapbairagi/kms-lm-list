@@ -187,7 +187,7 @@ app.post('/api/upload', async (req, res) => {
     });
   } catch (error) {
     console.error('Error generating the Excel file:', error);
-    return res.status(500).send({ message: 'Error generating the Excel file' });
+    return res.status(500).send({ message: error });
   }
 });
 
