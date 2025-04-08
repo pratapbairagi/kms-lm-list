@@ -172,32 +172,39 @@ function App() {
   // }
   // }
 
-  async function handleFileUpload(event) {
-    const uploadedFile = event.target.files[0];
-    if (!uploadedFile) return;
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
   
-    setFileName(uploadedFile.name);
+    setFileName(file.name);
+  
+    const formData = new FormData();
+    formData.append("file", file);
   
     try {
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
+      const response = await axios.post(
+        `${rootUrl}/api/upload`, // ✅ your deployed backend URL
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
   
-      const response = await axios.post(`${rootUrl}/api/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        withCredentials: true
-      });
+      if (response.data?.data) {
+        console.log("data response ", response.data)
+        // setExcelData(response.data.data);
+        // setFilteredData(response.data.data);
+        // setPaginatedDataOne(response.data.data.slice(0, itemsPerPage)); // or whatever pagination logic you're using
+      }
   
-      setData(response.data.data.filter((v, i) => i !== 0));
-      setHeaders(response.data.headers);
-      fetchFiles(); // Refresh file list
-      Swal.fire('Success!', 'File uploaded successfully', 'success');
+      Swal.fire("Success!", "Excel file uploaded and processed.", "success");
     } catch (error) {
       console.error("Upload error:", error);
-      Swal.fire('Error!', 'File upload failed', 'error');
+      Swal.fire("Error", "Failed to upload file", "error");
     }
-  }
+  };
 
 
   // Handle saving edited data back to server

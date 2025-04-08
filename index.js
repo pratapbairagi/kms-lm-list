@@ -31,11 +31,6 @@ app.use(cookieParser());
 //   limits: { fileSize: 10 * 1024 * 1024 } // 10MB file size limit
 // });
 
-const upload = multer({
-  storage: multer.memoryStorage(), // Store files in memory
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB file size limit
-});
-
 
 // Endpoint to send bulk email
 app.post('/api/send-bulk-email/:memberNumber', async (req, res) => {
@@ -55,6 +50,21 @@ app.post('/api/send-bulk-email/:memberNumber', async (req, res) => {
       arrayreceivers = data.EMAIL
     }
 
+    // Initialize Sendinblue transactional email API instance
+    // const apiInstance = new sibApiV3Sdk.TransactionalEmailsApi();
+
+    // Prepare the email object to send
+    // const sendSmtpEmail = new sibApiV3Sdk.SendSmtpEmail();
+    // sendSmtpEmail.subject = data.subject; // Email subject
+    // sendSmtpEmail.htmlContent = data.htmlContent; // HTML content for the email body
+    // sendSmtpEmail.sender = { email: 'pratap.bairagi.test@gmail.com', name: data.from }; // Sender's email and name
+    // sendSmtpEmail.to = [{ email: data.to }]; // Recipient's email
+
+    // Send the email using Sendinblue API
+    // const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+    // Log the result from Sendinblue API
+    console.log('Email sent successfully:', result);
 
     // Return success message
     // res.status(200).json({ message: 'Emails sent successfully', result });
@@ -192,65 +202,31 @@ function convertExcelDate(excelDate) {
 //     });
 //   } catch (error) {
 //     console.error('Error generating the Excel file:', error);
-//     return res.status(500).send({ message: error });
+//     return res.status(500).send({ message: 'Error generating the Excel file' });
 //   }
 // });
 
-// Modified upload endpoint to handle direct file uploads
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// Endpoint to upload Excel file
+app.post("/api/upload", upload.single("file"), (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const fileName = req.file.originalname;
-    const fileBuffer = req.file.buffer;
+    // Read file buffer directly using xlsx
+    const workbook = XLSX.read(file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(sheet);
 
-    // Process Excel file
-    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-    // Process data as before
-    let datas = [];
-    let headers = jsonData[0];
-
-    let filteredData = jsonData.filter(v => v.length > 0);
-    filteredData.map((v, i) => {
-      let formated = {};
-      headers.forEach((val, ind) => {
-        if (val !== null) {
-          formated[val] = v[ind] || "N/A"
-        }
-      })
-      datas.push(formated)
-    });
-
-    datas = datas.map((v) => {
-      if (typeof Number(v.DOB) === "number") {
-        return { ...v, DOB: typeof v.DOB === "number" ? convertExcelDate(v.DOB) : v.DOB }
-      } else {
-        return v
-      }
-    });
-
-    // Save to uploads directory if needed (temporary in Vercel)
-    const filePath = path.join(uploadsDir, fileName);
-    const ws = XLSX.utils.json_to_sheet(datas.filter((v, i) => i !== 0));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'MembersData');
-    XLSX.writeFile(wb, filePath);
-
-    res.status(201).json({
-      message: 'Excel file processed successfully',
-      data: datas,
-      fileName: fileName,
-      headers: headers
-    });
-
-  } catch (error) {
-    console.error('Error processing file:', error);
-    res.status(500).json({ message: 'Error processing file', error: error.message });
+    res.json({ message: "File processed successfully", data });
+  } catch (err) {
+    console.error("Error parsing Excel:", err);
+    res.status(500).json({ error: "Failed to parse Excel file" });
   }
 });
 
