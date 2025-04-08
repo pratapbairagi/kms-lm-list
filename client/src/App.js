@@ -194,6 +194,7 @@ function App() {
   
       if (response.data?.data) {
         console.log("data response ", response.data)
+        setData(response.data.data.filter((v, i)=> i !== 0))
         // setExcelData(response.data.data);
         // setFilteredData(response.data.data);
         // setPaginatedDataOne(response.data.data.slice(0, itemsPerPage)); // or whatever pagination logic you're using
